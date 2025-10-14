@@ -24,9 +24,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		6E90321D2E98073700EB124A /* AndOne.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AndOne.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		6E90322C2E98073800EB124A /* AndOneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AndOneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		6E9032362E98073800EB124A /* AndOneUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AndOneUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		6E90321D2E98073700EB124A /* AndOne.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = AndOne.app; path = "/Users/bridges/Documents/Github repo/AndOne/AndOne/build/Debug-iphoneos/AndOne.app"; sourceTree = "<absolute>"; };
+		6E90322C2E98073800EB124A /* AndOneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = AndOneTests.xctest; path = "/Users/bridges/Documents/Github repo/AndOne/AndOne/build/Debug-iphoneos/AndOne.app/PlugIns/AndOneTests.xctest"; sourceTree = "<absolute>"; };
+		6E9032362E98073800EB124A /* AndOneUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = AndOneUITests.xctest; path = "/Users/bridges/Documents/Github repo/AndOne/AndOne/build/Debug-iphoneos/AndOneUITests-Runner.app/PlugIns/AndOneUITests.xctest"; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -75,21 +75,10 @@
 		6E9032142E98073700EB124A = {
 			isa = PBXGroup;
 			children = (
-				6E90321F2E98073700EB124A /* AndOne */,
 				6E90322F2E98073800EB124A /* AndOneTests */,
 				6E9032392E98073800EB124A /* AndOneUITests */,
-				6E90321E2E98073700EB124A /* Products */,
+				6E90321F2E98073700EB124A /* AndOne */,
 			);
-			sourceTree = "<group>";
-		};
-		6E90321E2E98073700EB124A /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				6E90321D2E98073700EB124A /* AndOne.app */,
-				6E90322C2E98073800EB124A /* AndOneTests.xctest */,
-				6E9032362E98073800EB124A /* AndOneUITests.xctest */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -196,7 +185,7 @@
 			mainGroup = 6E9032142E98073700EB124A;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 6E90321E2E98073700EB124A /* Products */;
+			productRefGroup = 6E9032142E98073700EB124A;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
