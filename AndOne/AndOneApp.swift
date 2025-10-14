@@ -4,7 +4,10 @@ import SwiftData
 @main
 struct AndOneApp: App {
     var body: some Scene {
-        WindowGroup { HomeView() }
-            .modelContainer(for: [Court.self, Player.self, Game.self])
+        WindowGroup {
+            HomeView()
+                .tint(.andOrange)  
+        }
+        .modelContainer(for: [Court.self, Player.self, Game.self])
     }
 }

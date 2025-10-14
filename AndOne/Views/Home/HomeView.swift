@@ -13,46 +13,105 @@ struct HomeView: View {
     @State private var featureLighting = false
     @State private var featureParking = false
     @State private var featureWater = false
+    enum TimeScope: String, CaseIterable { case today = "Aujourd’hui", week = "Semaine" }
+    @State private var timeScope: TimeScope = .today
+
+    @State private var showCreate = false
+    @State private var showToast: (text: String, icon: String, tint: Color)? = nil
 
     var body: some View {
         NavigationStack {
-            Group {
-                if filtered.isEmpty {
-                    EmptyStateView(
-                        title: "Aucun match",
-                        message: "Crée ton premier match ou ajuste les filtres.",
-                        actionTitle: "Créer un match"
-                    ) { vm.query = ""; /* open sheet via toolbar button below */ }
-                } else {
-                    List {
-                        ForEach(groupedByDate.keys.sorted(), id: \.self) { day in
-                            Section(day.formatted(date: .abbreviated, time: .omitted)) {
-                                ForEach(groupedByDate[day]!) { g in
+            ZStack(alignment: .bottomTrailing) {
+                ScrollView {
+                    if sections.isEmpty {
+                        EmptyStateView(
+                            title: "Aucun match à venir",
+                            message: "Crée ton premier match ou ajuste les filtres.",
+                            actionTitle: "Créer un match"
+                        ) { showCreate = true }
+                        .padding(.top, 60)
+                    } else {
+                        LazyVStack(spacing: 14) {
+                            ForEach(sections) { section in
+                                Text(section.date.formatted(date: .abbreviated, time: .omitted))
+                                    .font(.subheadline)
+                                    .foregroundStyle(Color.andMuted)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 16)
+                                    .padding(.top, 10)
+
+                                ForEach(section.games) { g in
                                     NavigationLink(value: g) {
-                                        HStack {
-                                            Text(g.kind.rawValue).font(.headline)
-                                            Spacer()
-                                            Text(g.court.name).lineLimit(1)
-                                            Label("\(g.spotsLeft)", systemImage: "person.2.fill")
-                                                .labelStyle(.titleAndIcon)
+                                        MatchCard(game: g) { joined in
+                                            withAnimation(.spring(response: 0.4, dampingFraction: 0.9)) {
+                                                if joined {
+                                                    showToast = ("Ajouté au match ✅", "checkmark.circle.fill", .andSuccess)
+                                                } else {
+                                                    showToast = ("Impossible de rejoindre ❌", "xmark.octagon.fill", .andDanger)
+                                                }
+                                            }
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                                                withAnimation { showToast = nil }
+                                            }
                                         }
+                                        .padding(.horizontal, 16)
                                     }
                                 }
                             }
+                            .padding(.bottom, 24)
                         }
+                        .animation(.easeInOut, value: sections.map(\.id))
                     }
                 }
+                .background(Color(.systemGroupedBackground))
+                .navigationTitle("AndOne")
+                .toolbar { toolbar }
+                // FAB +
+                Button {
+                    Haptics.light()
+                    showCreate = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.title2.weight(.bold))
+                        .padding(18)
+                        .background(Color.andOrange, in: Circle())
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 6)
+                        .padding(.trailing, 20).padding(.bottom, 28)
+                        .accessibilityLabel("Créer un match")
+                }
+
+                // Toast
+                if let toast = showToast {
+                    Toast(text: toast.text, systemName: toast.icon, tint: toast.tint)
+                        .padding(.bottom, 94)
+                        .padding(.horizontal, 20)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
-            .navigationTitle("AndOne")
-            .toolbar { toolbar }
+            .safeAreaInset(edge: .top) { stickyFilters }
+            .sheet(isPresented: $showCreate) {
+                CreateGameView().presentationDetents([.medium, .large])
+            }
             .navigationDestination(for: Game.self) { g in GameDetailView(game: g) }
         }
-        .task { BootstrapService.seedIfNeeded(context: context) } // exécuté 1 seule fois
+        .task { BootstrapService.seedIfNeeded(context: context) }
+        .refreshable { /* pattern attendu */ }
     }
 
     // MARK: - Filtering
     private var filtered: [Game] {
         games.filter { g in
+            guard g.scheduledAt >= Date() else { return false } // à venir
+            let inScope: Bool = {
+                switch timeScope {
+                case .today:
+                    return Calendar.current.isDateInToday(g.scheduledAt)
+                case .week:
+                    let end = Calendar.current.date(byAdding: .day, value: 7, to: Date())!
+                    return g.scheduledAt < end
+                }
+            }()
             let govOK = selectedGov == nil || g.court.governorate == selectedGov
             let kindOK = vm.selectedKind == nil || g.kind == vm.selectedKind
             let courtOK = courtKind == nil || g.court.kind == courtKind
@@ -61,31 +120,33 @@ struct HomeView: View {
                 (!featureLighting || g.court.hasLighting) &&
                 (!featureParking || g.court.hasParking) &&
                 (!featureWater || g.court.hasWaterPoint)
-            return govOK && kindOK && courtOK && spotsOK && featOK
+            return inScope && govOK && kindOK && courtOK && spotsOK && featOK
         }
     }
 
-    private var groupedByDate: [Date: [Game]] {
-        Dictionary(grouping: filtered) { Calendar.current.startOfDay(for: $0.scheduledAt) }
-            .mapValues { $0.sorted { $0.scheduledAt < $1.scheduledAt } }
+    // Sections (group by day)
+    private struct GameSection: Identifiable { var id: Date { date }; let date: Date; let games: [Game] }
+    private var sections: [GameSection] {
+        let grouped = Dictionary(grouping: filtered) { Calendar.current.startOfDay(for: $0.scheduledAt) }
+        let sortedDays = grouped.keys.sorted()
+        return sortedDays.map { day in
+            let dayGames = (grouped[day] ?? []).sorted { $0.scheduledAt < $1.scheduledAt }
+            return GameSection(date: day, games: dayGames)
+        }
     }
 
-    // MARK: - UI
+    // MARK: - Toolbar (menus compactes)
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             Menu(selectedGov?.rawValue ?? "Tous les gouvernorats") {
                 Button("Tous") { selectedGov = nil }
-                ForEach(Governorate.allCases, id: \.self) { g in
-                    Button(g.rawValue) { selectedGov = g }
-                }
+                ForEach(Governorate.allCases, id: \.self) { g in Button(g.rawValue) { selectedGov = g } }
             }
         }
         ToolbarItem(placement: .principal) {
             Menu(vm.selectedKind?.rawValue ?? "Type") {
                 Button("Tous") { vm.selectedKind = nil }
-                ForEach(GameKind.allCases, id: \.self) { k in
-                    Button(k.rawValue) { vm.selectedKind = k }
-                }
+                ForEach(GameKind.allCases, id: \.self) { k in Button(k.rawValue) { vm.selectedKind = k } }
             }
         }
         ToolbarItem(placement: .topBarTrailing) {
@@ -103,12 +164,29 @@ struct HomeView: View {
                     selectedGov = nil; vm.selectedKind = nil; onlyWithSpots = true
                     courtKind = nil; featureLighting = false; featureParking = false; featureWater = false
                 }
-            } label: {
-                Image(systemName: "line.3.horizontal.decrease.circle")
+            } label: { Image(systemName: "line.3.horizontal.decrease.circle") }
+        }
+    }
+
+    // MARK: - Sticky filters (segmented + compteur)
+    private var stickyFilters: some View {
+        VStack(spacing: 10) {
+            Picker("", selection: $timeScope) {
+                ForEach(TimeScope.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
+
+            // compteur “X matchs aujourd’hui/7 jours”
+            let count = filtered.count
+            Text(timeScope == .today ? "\(count) matchs aujourd’hui" : "\(count) matchs à venir (7 jours)")
+                .font(.footnote).foregroundStyle(Color.andMuted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 6)
+                .transition(.opacity)
         }
-        ToolbarItem(placement: .bottomBar) {
-            NavigationLink("Admin", destination: AdminDashboardView())
-        }
+        .background(.thinMaterial)
     }
 }

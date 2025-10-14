@@ -8,6 +8,7 @@ struct GameDetailView: View {
     var game: Game
     @State private var selected: Player?
     @State private var error: String?
+    @State private var didInitSelection = false
 
     var body: some View {
         Form {
@@ -30,6 +31,15 @@ struct GameDetailView: View {
             }
         }
         .navigationTitle("Match \(game.kind.rawValue)")
+        .onAppear {
+            guard !didInitSelection else { return }
+            if let someone = players.first(where: { p in !game.players.contains(where: { $0.id == p.id }) }) {
+                selected = someone
+            } else {
+                selected = players.first
+            }
+            didInitSelection = true
+        }
     }
 
     private func tryJoin() {
@@ -51,5 +61,4 @@ struct GameDetailView: View {
             self.error = err.localizedDescription
         }
     }
-
 }

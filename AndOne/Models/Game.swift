@@ -10,7 +10,7 @@ final class Game {
     var court: Court
     var players: [Player]
     var creatorId: UUID
-
+    var note: String?   
     init(kind: GameKind, scheduledAt: Date, court: Court, players: [Player] = [], creatorId: UUID) {
         self.id = UUID(); self.kind = kind; self.status = .open
         self.scheduledAt = scheduledAt; self.court = court; self.players = players

@@ -58,13 +58,12 @@ struct AdminDashboardView: View {
                 }
 
                 Button("Ajouter le terrain") {
-                    let c = Court(
+                    vm.addCourt(
                         name: name, governorate: governorate, city: city, kind: kind, hoops: hoops,
                         hasLighting: hasLighting, hasLockerRoom: hasLocker, hasStands: hasStands,
                         hasWaterPoint: hasWater, hasParking: hasParking, isAccessiblePMR: isPMR,
-                        surface: surface, condition: condition
+                        surface: surface, condition: condition, context: context
                     )
-                    context.insert(c); try? context.save()
                     name = ""; city = ""
                 }.disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
@@ -83,7 +82,8 @@ struct AdminDashboardView: View {
                 TextField("Pseudo", text: $nickname)
                 Stepper("Niveau: \(level)", value: $level, in: 1...5)
                 Button("Ajouter le joueur") {
-                    vm.addPlayer(nickname: nickname, level: level, context: context); nickname = ""
+                    vm.addPlayer(nickname: nickname, level: level, context: context)
+                    nickname = ""
                 }.disabled(nickname.trimmingCharacters(in: .whitespaces).isEmpty)
             }
 
@@ -111,7 +111,6 @@ struct AdminDashboardView: View {
         .confirmationDialog("Supprimer toutes les données et recréer les exemples ?",
                             isPresented: $showConfirmReset, titleVisibility: .visible) {
             Button("Réinitialiser", role: .destructive) {
-                // wipe all and reseed
                 try? context.delete(model: Game.self)
                 try? context.delete(model: Player.self)
                 try? context.delete(model: Court.self)
@@ -124,7 +123,6 @@ struct AdminDashboardView: View {
     }
 }
 
-// Helper to delete all rows of a model
 private extension ModelContext {
     func delete<T: PersistentModel>(model: T.Type) throws {
         let all = try self.fetch(FetchDescriptor<T>())
