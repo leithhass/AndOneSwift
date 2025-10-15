@@ -135,21 +135,28 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Toolbar (menus compactes)
+    // MARK: - Toolbar (icônes à droite)
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            Menu(selectedGov?.rawValue ?? "Tous les gouvernorats") {
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            // Gouvernorat
+            Menu {
                 Button("Tous") { selectedGov = nil }
-                ForEach(Governorate.allCases, id: \.self) { g in Button(g.rawValue) { selectedGov = g } }
+                ForEach(Governorate.allCases, id: \.self) { g in
+                    Button(g.rawValue) { selectedGov = g }
+                }
+            } label: {
+                Image(systemName: "globe.europe.africa.fill")
             }
-        }
-        ToolbarItem(placement: .principal) {
-            Menu(vm.selectedKind?.rawValue ?? "Type") {
+
+            // Type (1v1…5v5)
+            Menu {
                 Button("Tous") { vm.selectedKind = nil }
                 ForEach(GameKind.allCases, id: \.self) { k in Button(k.rawValue) { vm.selectedKind = k } }
+            } label: {
+                Image(systemName: "person.2.square.stack.fill")
             }
-        }
-        ToolbarItem(placement: .topBarTrailing) {
+
+            // Filtres avancés
             Menu {
                 Toggle("Places dispo", isOn: $onlyWithSpots)
                 Menu("Type de court") {
@@ -164,7 +171,9 @@ struct HomeView: View {
                     selectedGov = nil; vm.selectedKind = nil; onlyWithSpots = true
                     courtKind = nil; featureLighting = false; featureParking = false; featureWater = false
                 }
-            } label: { Image(systemName: "line.3.horizontal.decrease.circle") }
+            } label: {
+                Image(systemName: "line.3.horizontal.decrease.circle")
+            }
         }
     }
 

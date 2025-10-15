@@ -5,8 +5,8 @@ import SwiftData
 struct AndOneApp: App {
     var body: some Scene {
         WindowGroup {
-            HomeView()
-                .tint(.andOrange)  
+            MainTabView()
+                .tint(.andOrange)          // Accent
         }
         .modelContainer(for: [Court.self, Player.self, Game.self])
     }

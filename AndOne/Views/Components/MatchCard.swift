@@ -3,27 +3,30 @@ import SwiftData
 
 struct MatchCard: View {
     @Environment(\.modelContext) private var context
-    @Query private var players: [Player]        // pour Join rapide
+    @Query private var players: [Player]
     @StateObject private var vm = GameViewModel()
 
     let game: Game
-    var onJoined: ((Bool) -> Void)? = nil       // pour afficher un toast côté parent
+    var onJoined: ((Bool) -> Void)? = nil
 
-    private var title: some View {
-        HStack(alignment: .center, spacing: 10) {
-            // Titre carte
-            Text("\(game.kind.rawValue) · ")
+    private var titleRow: some View {
+        HStack(spacing: 10) {
+            // Titre + pill état
+            Text("\(game.kind.rawValue) ·")
                 .font(.headline)
                 .foregroundStyle(Color.andInk)
-            // Pill état
+
             pill
+
             Spacer()
-            // Heure chip
-            Pill(text: game.scheduledAt.formatted(date: .omitted, time: .shortened),
-                 icon: "clock",
-                 fg: Color.andInk,
-                 bg: Color.andOrangeSoft.opacity(0.5))
-                .accessibilityLabel(Text("Heure \(game.scheduledAt.formatted(date: .omitted, time: .shortened))"))
+
+            // Heure chip (ink sur fond soft)
+            Pill(
+                text: game.scheduledAt.formatted(date: .omitted, time: .shortened),
+                icon: "clock",
+                fg: Color.andInk,
+                bg: Color.andOrangeSoft.opacity(0.5)
+            )
         }
     }
 
@@ -49,10 +52,9 @@ struct MatchCard: View {
         }
     }
 
-    private var meta: some View {
+    private var metaRow: some View {
         HStack(spacing: 10) {
             Image(systemName: "mappin.and.ellipse")
-            // Nom de court semibold + ville secondary
             (
                 Text(game.court.name).fontWeight(.semibold)
                 + Text(" — \(game.court.city)").foregroundStyle(Color.andMuted)
@@ -64,16 +66,16 @@ struct MatchCard: View {
         }
         .font(.subheadline)
         .foregroundStyle(Color.andInk)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Lieu \(game.court.name), \(game.court.city). \(game.players.count) joueurs sur \(game.capacity)")
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            title
-            meta
-            CourtAmenityRow(court: game.court)
-            // CTA Join / Voir
+            titleRow
+            metaRow
+            CourtAmenityIcons(court: game.court)                // ← icônes mono-ligne
+                .padding(.top, 2)
+
+            // CTA
             HStack {
                 if game.spotsLeft > 0 {
                     Button {
@@ -86,34 +88,42 @@ struct MatchCard: View {
                     .tint(.andOrange)
                     .accessibilityLabel("Rejoindre le match")
                 } else {
-                    NavigationLink(value: game) {
-                        Label("Voir", systemImage: "arrow.forward.circle")
-                            .font(.callout.weight(.semibold))
-                    }
-                    .buttonStyle(.bordered)
+                    Pill(text: "Complet", icon: "xmark.circle", fg: Color.andMuted, bg: Color.andOrangeSoft.opacity(0.4))
                 }
                 Spacer()
+                NavigationLink(value: game) {
+                    Text("Voir").font(.callout.weight(.semibold))
+                }.buttonStyle(.bordered) // action neutre
             }
             .padding(.top, 2)
         }
         .andCard()
         .buttonStyle(PressEffect())
         .transition(.move(edge: .bottom).combined(with: .opacity))
-        .contextMenu { // “swipe-like” actions dans ScrollView
-            Button {
-                joinQuick()
-            } label: { Label("Rejoindre", systemImage: "plus") }
-            Button(role: .none) {} label: { Label("Favori", systemImage: "star") } // placeholder
-        }
+        .contextMenu {
+                   if game.spotsLeft > 0 {
+                        Button { joinQuick() } label: { Label("Rejoindre", systemImage: "plus") }
+                    }
+                    Button {
+                        FavoritesService.toggle(courtId: game.court.id)
+                    } label: {
+                        Label(
+                            FavoritesService.isFavorite(courtId: game.court.id) ? "Retirer favori" : "Ajouter favori",
+                            systemImage: "star"
+                        )
+                   }
+               }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Match \(game.kind.rawValue), \(game.spotsLeft) places restantes, \(game.court.name), \(game.scheduledAt.formatted(date: .omitted, time: .shortened))")
     }
 
     private func joinQuick() {
         guard game.spotsLeft > 0 else { Haptics.warning(); onJoined?(false); return }
-        // Choisir un joueur dispo (le 1er non déjà inscrit), sinon le 1er de la liste
+        // Choisir un joueur qui n’est pas déjà dans le match
         let pick = players.first(where: { p in !game.players.contains(where: { $0.id == p.id }) }) ?? players.first
-        guard let player = pick else { Haptics.warning(); onJoined?(false); return }
+        guard let player = pick, !game.players.contains(where: { $0.id == player.id }) else {
+            Haptics.warning(); onJoined?(false); return
+        }
         do {
             try vm.join(game, player: player, context: context)
             Haptics.success()
