@@ -1,52 +1,45 @@
-//
-//  Explorer.swift
-//  AndOne
-//
-//  Created by Bridges-Mobile-dev-s01 on 15/10/2025.
-//
-
 import SwiftUI
 import SwiftData
 
 struct ExplorerView: View {
     @Query(sort: \Court.city) private var courts: [Court]
+
     @State private var gov: Governorate? = nil
     @State private var kind: CourtKind? = nil
     @State private var onlyFavs = false
 
+    // Cache local des favoris pour un rendu instantané
+    @State private var favs: Set<UUID> = []
+
     var body: some View {
         NavigationStack {
             List(filtered) { c in
-                HStack(spacing: 12) {
-                    Image(systemName: c.kind == .half ? "rectangle.leadinghalf.inset.filled" : "rectangle.inset.filled")
-                        .foregroundStyle(Color.andInk)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(c.name).fontWeight(.semibold)
-                        Text("\(c.city) • \(c.governorate.rawValue)")
-                            .font(.caption).foregroundStyle(Color.andMuted)
-                        CourtAmenityIcons(court: c)
-
-                            .padding(.top, 2)
+                CourtRow(
+                    court: c,
+                    isFavorite: favs.contains(c.id),
+                    onToggleFavorite: { nowFav in
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
+                            FavoritesService.toggle(courtId: c.id)
+                            if nowFav {
+                                favs.insert(c.id)
+                            } else {
+                                favs.remove(c.id)
+                            }
+                        }
                     }
-                    Spacer()
-                    Button {
-                        FavoritesService.toggle(courtId: c.id)
-                        Haptics.light()
-                    } label: {
-                        Image(systemName: FavoritesService.isFavorite(courtId: c.id) ? "star.fill" : "star")
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Color.andOrange)
-                    .accessibilityLabel("Favori")
-                }
-                .contentShape(Rectangle())
+                )
+                // Si on est en mode "Mes courts", enlève la ligne quand on retire le favori
+                .opacity(!onlyFavs || favs.contains(c.id) ? 1 : 0)
+                .animation(.easeInOut(duration: 0.2), value: favs)
             }
             .navigationTitle("Explorer")
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Menu {
                         Button("Tous") { gov = nil }
-                        ForEach(Governorate.allCases, id: \.self) { g in Button(g.rawValue) { gov = g } }
+                        ForEach(Governorate.allCases, id: \.self) { g in
+                            Button(g.rawValue) { gov = g }
+                        }
                     } label: { Image(systemName: "globe.europe.africa.fill") }
 
                     Menu {
@@ -59,6 +52,10 @@ struct ExplorerView: View {
                         .toggleStyle(.switch)
                 }
             }
+            .onAppear {
+                // Sync initial avec le service
+                favs = Set(FavoritesService.ids())
+            }
         }
     }
 
@@ -66,7 +63,46 @@ struct ExplorerView: View {
         courts.filter { c in
             (gov == nil || c.governorate == gov) &&
             (kind == nil || c.kind == kind) &&
-            (!onlyFavs || FavoritesService.isFavorite(courtId: c.id))
+            (!onlyFavs || favs.contains(c.id))
         }
+    }
+}
+
+// MARK: - Row
+
+private struct CourtRow: View {
+    let court: Court
+    let isFavorite: Bool
+    let onToggleFavorite: (Bool) -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: court.kind == .half ? "rectangle.leadinghalf.inset.filled" : "rectangle.inset.filled")
+                .foregroundStyle(Color.andInk)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(court.name).fontWeight(.semibold).foregroundStyle(Color.andInk)
+                Text("\(court.city) • \(court.governorate.rawValue)")
+                    .font(.caption).foregroundStyle(Color.andMuted)
+                CourtAmenityIcons(court: court)
+                    .padding(.top, 2)
+            }
+
+            Spacer()
+
+            Button {
+                onToggleFavorite(!isFavorite)
+                Haptics.light()
+            } label: {
+                Image(systemName: isFavorite ? "star.fill" : "star")
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(isFavorite ? Color.andOrange : Color.secondary)
+                    .imageScale(.large)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isFavorite ? "Retirer des favoris" : "Ajouter aux favoris")
+            .symbolEffect(.bounce, value: isFavorite) // petite vie à l’icône
+        }
+        .contentShape(Rectangle())
     }
 }
