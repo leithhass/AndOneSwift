@@ -10,7 +10,13 @@ extension Color {
     static let andDanger = Color(.systemRed)
     static let andSuccess = Color(.systemGreen)
     static let andInfo = Color(.systemIndigo)
+
+    // ✅ Ajouts (réutilisables partout)
+    static let andSurface = Color(UIColor.systemGroupedBackground) // fond app par défaut
+    static let andMint = Color(red: 0.36, green: 0.72, blue: 0.68)     // 3e couleur (vert doux)
+    static let andBlueGray = Color(red: 0.34, green: 0.42, blue: 0.56) // alternative sobre
 }
+
 
 // Carte standard
 extension View {
