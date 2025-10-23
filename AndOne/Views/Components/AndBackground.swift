@@ -33,6 +33,8 @@ private struct AndBackground: ViewModifier {
         case (.mint, .dark),  (.auto, .dark):   top = .andMint.opacity(0.30)
         case (.blueGray, .light):   top = .andBlueGray.opacity(0.18)
         case (.blueGray, .dark):    top = .andBlueGray.opacity(0.30)
+        case (_, _):
+            <#code#>
         }
 
         return LinearGradient(colors: [top, mid, bottom],
@@ -60,3 +62,4 @@ public extension View {
         modifier(AndBackground(style: style))
     }
 }
+/// Fond AndOne réutilisable
